@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: my-telegram-bot
+    runtime: python
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    envVars:
+      - key: TELEGRAM_TOKEN
+        value: "توكن_البوت_هنا"
+      - key: CHAT_ID
+        value: "chat_id_هنا"
