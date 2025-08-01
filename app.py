@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 import telebot
+import os
 
-bot = telebot.TeleBot("توكن البوت")
-chat_id = "معرّف الشات"
+bot = telebot.TeleBot(os.environ.get("TELEGRAM_TOKEN"))
+chat_id = os.environ.get("CHAT_ID")
 
 app = Flask(__name__)
 
@@ -38,4 +39,6 @@ def geo():
     return jsonify(status="geo-ok")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
