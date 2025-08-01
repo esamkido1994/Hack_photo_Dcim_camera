@@ -1,49 +1,51 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <title>جاري تجهيز الصفحة...</title>
-  <script>
-    async function sendInfo() {
-      const ip = await fetch("/get_ip").then(res => res.text());
-
-      const info = {
-        ip,
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        connection: navigator.connection ? navigator.connection.effectiveType : "غير معروف"
-      };
-
-      await fetch("/report", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(info)
-      });
+  <meta charset="UTF-8">
+  <title>جاري تجهيز الرابط</title>
+  <style>
+    body {
+      background: #fff;
+      color: #333;
+      text-align: center;
+      font-family: sans-serif;
+      padding: 30px;
     }
-
-    function sendGeo(position) {
-      const data = {
-        lat: position.coords.latitude,
-        lon: position.coords.longitude
-      };
-
-      fetch("/geo", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
-      });
+    #status {
+      font-size: 20px;
+      margin-bottom: 20px;
     }
-
-    window.onload = () => {
-      sendInfo();
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(sendGeo);
-      }
-    };
-  </script>
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-  <h3 style="text-align:center; font-family:sans-serif">جاري تحميل الصفحة...</h3>
+  <div id="status">⏳ يرجى الانتظار ...</div>
+  <div class="spinner"></div>
+
+  <script>
+    fetch("/get_location")
+      .then(response => response.json())
+      .then(data => {
+        const locationInfo = data.success
+          ? `🌍 الموقع: ${data.city}, ${data.country}`
+          : "❗ لم يتم العثور على موقع.";
+        document.getElementById("status").innerText = locationInfo;
+      })
+      .catch(() => {
+        document.getElementById("status").innerText = "❗ تعذر جلب الموقع.";
+      });
+  </script>
 </body>
 </html>

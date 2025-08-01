@@ -1,43 +1,33 @@
-import os
+from flask import Flask, request, render_template
 import requests
-from flask import Flask, request
 
 app = Flask(__name__)
 
-# بيانات بوت تيليجرام
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-
-# رابط إرسال الرسائل للبوت
-TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-
-def get_location(ip):
-    try:
-        res = requests.get(f"http://ip-api.com/json/{ip}")
-        data = res.json()
-        if data["status"] == "success":
-            location = f"🌍 IP: {ip}\nالبلد: {data['country']}\nالمدينة: {data['city']}\nالمزود: {data['isp']}"
-        else:
-            location = f"📡 IP: {ip}\nلم يتم العثور على موقع."
-        return location
-    except Exception as e:
-        return f"❌ فشل في جلب الموقع: {str(e)}"
-
-def send_to_telegram(message):
-    try:
-        requests.post(TELEGRAM_API, data={
-            "chat_id": CHAT_ID,
-            "text": message
-        })
-    except:
-        pass
-
 @app.route('/')
 def index():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    message = get_location(ip)
-    send_to_telegram(message)
-    return "<h2>✅ البوت يعمل بنجاح</h2>"
+    # عبارة أولية للمستخدم
+    message = "📡 يرجى الانتظار..."
 
-if __name__ == '__main__':
-    app.run()
+    # الحصول على IP الحقيقي
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    remote_ip = request.remote_addr or ''
+    
+    # قائمة عناوين مفصولة بفواصل
+    ip_list = [ip.strip() for ip in (forwarded_for + ',' + remote_ip).split(',')]
+    
+    # تصفية الـ IP الداخلي أو المحلي
+    public_ip = next((ip for ip in ip_list if not ip.startswith(('10.', '192.168.', '127.', '172.', '::1'))), None)
+
+    location = "لم يتم العثور على موقع."
+    if public_ip:
+        try:
+            response = requests.get(f"http://ip-api.com/json/{public_ip}")
+            data = response.json()
+            if data['status'] == 'success':
+                location = f"{data['country']}, {data['regionName']}, {data['city']} 📍"
+        except:
+            pass
+
+    print(f"📡 IP: {', '.join(ip_list)}\n🌍 Location: {location}")
+    
+    return render_template("index.html", message=message)
