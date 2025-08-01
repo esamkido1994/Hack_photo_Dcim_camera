@@ -38,6 +38,3 @@ def upload_photo():
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": resp.text}), 500
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
