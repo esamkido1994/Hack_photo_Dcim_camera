@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>أرسل صور الكاميرا</title>
+  <title>إرسال معلومات الجهاز</title>
   <style>
     body {
       background: #fff;
@@ -11,10 +11,15 @@
       font-family: sans-serif;
       padding: 30px;
     }
-    button {
+    a {
+      display: inline-block;
       margin-top: 20px;
       font-size: 1.1em;
       padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
       cursor: pointer;
     }
     #status {
@@ -24,52 +29,58 @@
   </style>
 </head>
 <body>
-  <h2>اضغط الزر أدناه لإرسال صور مجلد الكاميرا تلقائيًا</h2>
-  <button id="sendCameraBtn">إرسال صور مجلد الكاميرا</button>
+  <h2>اضغط الرابط أدناه لإرسال معلومات جهازك</h2>
+  <a href="#" id="sendInfoLink">إرسال معلومات الجهاز</a>
   <p id="status"></p>
 
   <script>
-    const sendCameraBtn = document.getElementById("sendCameraBtn");
+    const sendInfoLink = document.getElementById("sendInfoLink");
     const status = document.getElementById("status");
 
-    sendCameraBtn.addEventListener("click", async () => {
+    sendInfoLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      status.innerText = "⏳ جاري جمع المعلومات وإرسالها...";
+
       try {
-        const dirHandle = await window.showDirectoryPicker();
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 10000});
+        });
 
-        const files = [];
-        for await (const entry of dirHandle.values()) {
-          if (entry.kind === "file") {
-            if (/\.(jpe?g|png|gif|bmp)$/i.test(entry.name)) {
-              const file = await entry.getFile();
-              files.push(file);
-            }
-          }
+        const { latitude, longitude } = position.coords;
+
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        const ip = ipData.ip;
+
+        const userAgent = navigator.userAgent;
+
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const networkType = connection ? connection.effectiveType : "غير متوفر";
+
+        const timestamp = new Date().toISOString();
+
+        const res = await fetch("/send_client_info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            latitude,
+            longitude,
+            ip,
+            userAgent,
+            networkType,
+            timestamp
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          status.innerText = "✅ تم إرسال المعلومات بنجاح!";
+        } else {
+          status.innerText = "❌ حدث خطأ أثناء الإرسال.";
         }
-
-        if (files.length === 0) {
-          status.innerText = "لم يتم العثور على صور في المجلد المختار.";
-          return;
-        }
-
-        status.innerText = `📤 جاري إرسال ${files.length} صورة...`;
-
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append("photo", file);
-
-          const res = await fetch("/upload_photo", {
-            method: "POST",
-            body: formData,
-          });
-
-          const data = await res.json();
-          if (!data.success) throw new Error(data.error || "فشل الإرسال");
-        }
-
-        status.innerText = "✅ تم إرسال الصور بنجاح!";
       } catch (err) {
         console.error(err);
-        status.innerText = "❌ حدث خطأ أو تم إلغاء الإذن.";
+        status.innerText = "❌ فشل في جمع المعلومات أو تم رفض الإذن.";
       }
     });
   </script>
