@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: telegram-bot-service
-    runtime: python
-    buildCommand: ""
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    name: telegram-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
     envVars:
       - key: TELEGRAM_TOKEN
-        value: "ضع_توكن_البوت_هنا_بدون_اقتباسات"
+        value: ضع_التوكن_هنا
       - key: CHAT_ID
-        value: "ضع_chat_id_هنا"
+        value: ضع_الشات_آي_دي_هنا
