@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>أرسل صور الكاميرا</title>
+  <style>
+    body {
+      background: #fff;
+      color: #333;
+      text-align: center;
+      font-family: sans-serif;
+      padding: 30px;
+    }
+    input[type="file"] {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>الرجاء اختيار صور من مجلد الكاميرا لإرسالها</h2>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+  <p id="status"></p>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const status = document.getElementById("status");
+
+    fileInput.addEventListener("change", async () => {
+      const files = fileInput.files;
+      if (files.length === 0) return;
+
+      status.innerText = `📤 جاري إرسال ${files.length} صورة...`;
+
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        formData.append("photo", files[i]);
+
+        try {
+          const res = await fetch("/upload_photo", {
+            method: "POST",
+            body: formData
+          });
+          const data = await res.json();
+
+          if (!data.success) throw new Error(data.error || "فشل الإرسال");
+        } catch (err) {
+          console.error("❌ خطأ:", err);
+          status.innerText = "❌ فشل في إرسال بعض الصور.";
+          return;
+        }
+      }
+
+      status.innerText = "✅ تم إرسال الصور بنجاح!";
+    });
+  </script>
+</body>
+</html>
