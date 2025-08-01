@@ -1,44 +1,31 @@
-from flask import Flask, request, jsonify
-import telebot
 import os
+import telebot
+from flask import Flask, request
 
-bot = telebot.TeleBot(os.environ.get("TELEGRAM_TOKEN"))
-chat_id = os.environ.get("CHAT_ID")
+# قراءة المتغيرات من البيئة
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
 
+# تحقق من وجود التوكن والآي دي
+if not TOKEN or not CHAT_ID:
+    raise ValueError("❌ تأكد من ضبط TELEGRAM_TOKEN و CHAT_ID في إعدادات البيئة على Render.")
+
+bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/", methods=["GET"])
 def index():
-    return open("index.html", encoding="utf-8").read()
+    return "🤖 البوت يعمل بنجاح على Render!"
 
-@app.route('/get_ip')
-def get_ip():
-    return request.remote_addr
-
-@app.route('/report', methods=['POST'])
-def report():
-    data = request.json
-    msg = (
-        f"📡 تم دخول رابط جديد:\n\n"
-        f"🌐 IP: {data.get('ip')}\n"
-        f"🧠 الجهاز: {data.get('userAgent')}\n"
-        f"🗣 اللغة: {data.get('language')}\n"
-        f"🔌 الاتصال: {data.get('connection')}"
-    )
-    bot.send_message(chat_id, msg)
-    return jsonify(status="ok")
-
-@app.route('/geo', methods=['POST'])
-def geo():
-    data = request.json
-    lat = data.get("lat")
-    lon = data.get("lon")
-    if lat and lon:
-        location_url = f"https://maps.google.com/?q={lat},{lon}"
-        bot.send_message(chat_id, f"📍 الموقع الجغرافي:\n{location_url}")
-    return jsonify(status="geo-ok")
+@app.route("/send", methods=["POST"])
+def send():
+    try:
+        data = request.json
+        message = data.get("message", "🔔 لا توجد رسالة محددة.")
+        bot.send_message(CHAT_ID, message)
+        return "✅ تم الإرسال", 200
+    except Exception as e:
+        return f"❌ خطأ أثناء الإرسال: {str(e)}", 500
 
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
